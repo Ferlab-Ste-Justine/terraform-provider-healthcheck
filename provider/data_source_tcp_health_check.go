@@ -33,20 +33,37 @@ type ClientTcpAuthModel struct {
 }
 
 type TcpDataSourceModel struct {
-	Endpoints  []EndpointModel     `tfsdk:"endpoints"`
-	Tls        types.Bool          `tfsdk:"tls"`
-	ServerAuth ServerAuthModel     `tfsdk:"server_auth"`
-	ClientAuth ClientTcpAuthModel  `tfsdk:"client_auth"`
-	Timeout    types.String        `tfsdk:"timeout"`
-	Retries    types.Int64         `tfsdk:"retries"`
-	Up         []EndpointModel     `tfsdk:"up"`
-	Down       []EndpointDownModel `tfsdk:"down"`
+	Endpoints   []EndpointModel     `tfsdk:"endpoints"`
+	Maintenance []EndpointModel     `tfsdk:"maintenance"`
+	Tls         types.Bool          `tfsdk:"tls"`
+	ServerAuth  ServerAuthModel     `tfsdk:"server_auth"`
+	ClientAuth  ClientTcpAuthModel  `tfsdk:"client_auth"`
+	Timeout     types.String        `tfsdk:"timeout"`
+	Retries     types.Int64         `tfsdk:"retries"`
+	Up          []EndpointModel     `tfsdk:"up"`
+	Down        []EndpointDownModel `tfsdk:"down"`
 }
 
 func (d *TcpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
     resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"endpoints": schema.ListNestedAttribute{
+				Required: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"name": schema.StringAttribute{
+							Optional: true,
+						},
+						"address": schema.StringAttribute{
+							Required: true,
+						},
+						"port": schema.Int64Attribute{
+							Required: true,
+						},
+					},
+				},
+			},
+			"maintenance": schema.ListNestedAttribute{
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -210,6 +227,10 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	}()
 
 	for _, endpoint := range state.Endpoints {
+		if endpoint.IsInMaintenace(state.Maintenance) {
+			continue
+		}
+
 		go func() {
 			wg.Add(1)
 			defer wg.Done()

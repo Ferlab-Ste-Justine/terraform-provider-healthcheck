@@ -37,6 +37,7 @@ type ClientHttpAuthModel struct {
 type HttpDataSourceModel struct {
 	StatusCodes   []types.Int64       `tfsdk:"status_codes"`
 	Endpoints     []EndpointModel     `tfsdk:"endpoints"`
+	Maintenance   []EndpointModel     `tfsdk:"maintenance"`
 	Path          types.String        `tfsdk:"path"`
 	Tls           types.Bool          `tfsdk:"tls"`
 	ServerAuth    ServerAuthModel     `tfsdk:"server_auth"`
@@ -57,6 +58,22 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
                 },
 			},
 			"endpoints": schema.ListNestedAttribute{
+				Required: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"name": schema.StringAttribute{
+							Optional: true,
+						},
+						"address": schema.StringAttribute{
+							Required: true,
+						},
+						"port": schema.Int64Attribute{
+							Required: true,
+						},
+					},
+				},
+			},
+			"maintenance": schema.ListNestedAttribute{
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -251,6 +268,10 @@ func (d *HttpDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	}()
 
 	for _, endpoint := range state.Endpoints {
+		if endpoint.IsInMaintenace(state.Maintenance) {
+			continue
+		}
+
 		go func(reqUrl url.URL) {
 			wg.Add(1)
 			defer wg.Done()
