@@ -81,10 +81,10 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 							Optional: true,
 						},
 						"address": schema.StringAttribute{
-							Required: true,
+							Optional: true,
 						},
 						"port": schema.Int64Attribute{
-							Required: true,
+							Optional: true,
 						},
 					},
 				},

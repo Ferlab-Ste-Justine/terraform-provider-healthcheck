@@ -71,10 +71,10 @@ func (d *TcpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 							Optional: true,
 						},
 						"address": schema.StringAttribute{
-							Required: true,
+							Optional: true,
 						},
 						"port": schema.Int64Attribute{
-							Required: true,
+							Optional: true,
 						},
 					},
 				},

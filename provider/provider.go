@@ -31,6 +31,7 @@ func (p *HealthCheckProvider) DataSources(ctx context.Context) []func() datasour
     return []func() datasource.DataSource {
         NewTcpDataSource,
 		NewHttpDataSource,
+		NewFilterDataSource,
     }
 }
 

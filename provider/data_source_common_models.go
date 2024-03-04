@@ -12,11 +12,11 @@ type EndpointModel struct {
 
 func (endpoint *EndpointModel) IsInMaintenace(maintenance []EndpointModel) bool {
 	for _, maint := range maintenance {
-		if maint.Name.ValueString() == endpoint.Name.ValueString() {
+		if (!maint.Name.IsNull()) && (!endpoint.Name.IsNull()) && maint.Name.ValueString() == endpoint.Name.ValueString() {
 			return true
 		}
 
-		if maint.Address.ValueString() == endpoint.Address.ValueString() && maint.Port.ValueInt64() == endpoint.Port.ValueInt64() {
+		if (!maint.Address.IsNull()) && maint.Address.ValueString() == endpoint.Address.ValueString() && (!maint.Port.IsNull()) && maint.Port.ValueInt64() == endpoint.Port.ValueInt64() {
 			return true
 		}
 	}
