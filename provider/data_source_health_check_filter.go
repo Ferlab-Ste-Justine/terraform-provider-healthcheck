@@ -36,9 +36,15 @@ func (d *FilterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{},
-						"address": schema.StringAttribute{},
-						"port": schema.Int64Attribute{},
+						"name": schema.StringAttribute{
+							Computed: true,
+						},
+						"address": schema.StringAttribute{
+							Computed: true,
+						},
+						"port": schema.Int64Attribute{
+							Computed: true,
+						},
 					},
 				},
 			},
@@ -49,9 +55,15 @@ func (d *FilterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{},
-						"address": schema.StringAttribute{},
-						"port": schema.Int64Attribute{},
+						"name": schema.StringAttribute{
+							Optional: true,
+						},
+						"address": schema.StringAttribute{
+							Optional: true,
+						},
+						"port": schema.Int64Attribute{
+							Optional: true,
+						},
 					},
 				},
 			},
@@ -59,10 +71,18 @@ func (d *FilterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{},
-						"address": schema.StringAttribute{},
-						"port": schema.Int64Attribute{},
-						"error": schema.StringAttribute{},
+						"name": schema.StringAttribute{
+							Optional: true,
+						},
+						"address": schema.StringAttribute{
+							Optional: true,
+						},
+						"port": schema.Int64Attribute{
+							Optional: true,
+						},
+						"error": schema.StringAttribute{
+							Optional: true,
+						},
 					},
 				},
 			},

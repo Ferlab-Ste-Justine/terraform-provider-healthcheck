@@ -30,8 +30,8 @@ func (d *HttpDataSource) Metadata(_ context.Context, req datasource.MetadataRequ
 }
 
 type ClientHttpAuthModel struct {
-	CertAuth     ClientCertAuthModel     `tfsdk:"cert_auth"`
-	PasswordAuth ClientPasswordAuthModel `tfsdk:"password_auth"`
+	CertAuth     *ClientCertAuthModel     `tfsdk:"cert_auth"`
+	PasswordAuth *ClientPasswordAuthModel `tfsdk:"password_auth"`
 }
 
 type HttpDataSourceModel struct {
@@ -40,8 +40,8 @@ type HttpDataSourceModel struct {
 	Maintenance   []EndpointModel     `tfsdk:"maintenance"`
 	Path          types.String        `tfsdk:"path"`
 	Tls           types.Bool          `tfsdk:"tls"`
-	ServerAuth    ServerAuthModel     `tfsdk:"server_auth"`
-	ClientAuth    ClientHttpAuthModel `tfsdk:"client_auth"`
+	ServerAuth    *ServerAuthModel     `tfsdk:"server_auth"`
+	ClientAuth    *ClientHttpAuthModel `tfsdk:"client_auth"`
 	Timeout       types.String        `tfsdk:"timeout"`
 	Retries       types.Int64         `tfsdk:"retries"`
 	Up            []EndpointModel     `tfsdk:"up"`
@@ -74,7 +74,7 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 				},
 			},
 			"maintenance": schema.ListNestedAttribute{
-				Required: true,
+				Optional: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
@@ -110,6 +110,7 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"cert_auth": schema.SingleNestedAttribute{
+						Optional: true,
 						Attributes: map[string]schema.Attribute{
 							"cert": schema.StringAttribute{
 								Required: true,
@@ -121,6 +122,7 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 						},
 					},
 					"password_auth": schema.SingleNestedAttribute{
+						Optional: true,
 						Attributes: map[string]schema.Attribute{
 							"username": schema.StringAttribute{
 								Required: true,
@@ -143,9 +145,15 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{},
-						"address": schema.StringAttribute{},
-						"port": schema.Int64Attribute{},
+						"name": schema.StringAttribute{
+							Computed: true,
+						},
+						"address": schema.StringAttribute{
+							Computed: true,
+						},
+						"port": schema.Int64Attribute{
+							Computed: true,
+						},
 					},
 				},
 			},
@@ -153,10 +161,18 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{},
-						"address": schema.StringAttribute{},
-						"port": schema.Int64Attribute{},
-						"error": schema.StringAttribute{},
+						"name": schema.StringAttribute{
+							Computed: true,
+						},
+						"address": schema.StringAttribute{
+							Computed: true,
+						},
+						"port": schema.Int64Attribute{
+							Computed: true,
+						},
+						"error": schema.StringAttribute{
+							Computed: true,
+						},
 					},
 				},
 			},
@@ -217,7 +233,7 @@ func (d *HttpDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		InsecureSkipVerify: false,
 	}
 
-	if !state.ServerAuth.CaCert.IsNull() {
+	if state.ServerAuth != nil && (!state.ServerAuth.CaCert.IsNull()) {
 		roots := x509.NewCertPool()
 		ok := roots.AppendCertsFromPEM([]byte(state.ServerAuth.CaCert.ValueString()))
 		if !ok {
@@ -230,11 +246,11 @@ func (d *HttpDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		tlsConf.RootCAs = roots
 	}
 
-	if !state.ServerAuth.OverrideServerName.IsNull() {
+	if state.ServerAuth != nil && (!state.ServerAuth.OverrideServerName.IsNull()) {
 		tlsConf.ServerName = state.ServerAuth.OverrideServerName.ValueString()
 	}
 
-	if (!state.ClientAuth.CertAuth.Cert.IsNull()) && (!state.ClientAuth.CertAuth.Key.IsNull()) {
+	if state.ClientAuth != nil && state.ClientAuth.CertAuth != nil && (!state.ClientAuth.CertAuth.Cert.IsNull()) && (!state.ClientAuth.CertAuth.Key.IsNull()) {
 		certData, err := tls.X509KeyPair([]byte(state.ClientAuth.CertAuth.Cert.ValueString()), []byte(state.ClientAuth.CertAuth.Key.ValueString()))
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -302,7 +318,7 @@ func (d *HttpDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 					return
 				}
 
-				if (!state.ClientAuth.PasswordAuth.Username.IsNull()) && (!state.ClientAuth.PasswordAuth.Password.IsNull()) {
+				if state.ClientAuth != nil && state.ClientAuth.PasswordAuth != nil && (!state.ClientAuth.PasswordAuth.Username.IsNull()) && (!state.ClientAuth.PasswordAuth.Password.IsNull()) {
 					req.SetBasicAuth(
 						state.ClientAuth.PasswordAuth.Username.ValueString(), 
 						state.ClientAuth.PasswordAuth.Password.ValueString(),
