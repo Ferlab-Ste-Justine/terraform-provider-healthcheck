@@ -13,6 +13,7 @@ import (
     "github.com/hashicorp/terraform-plugin-framework/datasource"
     "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -188,29 +189,31 @@ func (d *HttpDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		return
 	}
 
-	var reqUrl url.URL
-	reqUrl.Path = state.Path.ValueString()
+	state.Up = []EndpointModel{}
+	state.Down = []EndpointDownModel{}
+
+	ctx = tflog.SetField(ctx, "type", "http")
+
+	urlPath := state.Path.ValueString()
+	ctx = tflog.SetField(ctx, "Path", urlPath)
 
 	timeout := "10s"
 	if !state.Timeout.IsNull() {
 		timeout = state.Timeout.ValueString()
 	}
+	ctx = tflog.SetField(ctx, "timeout", timeout)
 
 	isTls := true
 	if !state.Tls.IsNull() {
 		isTls = state.Tls.ValueBool()
 	}
-
-	if isTls {
-		reqUrl.Scheme = "https"
-	} else {
-		reqUrl.Scheme = "http"
-	}
+	ctx = tflog.SetField(ctx, "use_tls", isTls)
 
 	retries := int64(3)
 	if !state.Retries.IsNull() {
 		retries = state.Retries.ValueInt64()
 	}
+	ctx = tflog.SetField(ctx, "max_retries", retries)
 
 	statusCodes := []int64{200, 204}
 	if len(state.StatusCodes) > 0 {
@@ -219,6 +222,7 @@ func (d *HttpDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 			statusCodes = append(statusCodes, code.ValueInt64())
 		}
 	}
+	ctx = tflog.SetField(ctx, "status_codes", statusCodes)
 
 	dur, err := time.ParseDuration(timeout)
 	if err != nil {
@@ -262,120 +266,160 @@ func (d *HttpDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 		tlsConf.Certificates = []tls.Certificate{certData}
 	}
 
-	var wg sync.WaitGroup
-	var wg2 sync.WaitGroup
-	ch := make(chan EndpointDownModel)
+	endptCh := func() <-chan EndpointDownModel {
+		ch := make(chan EndpointDownModel)
 
-	go func() {
-		wg2.Add(1)
-		defer wg2.Done()
+		go func() {
+			var wg sync.WaitGroup
 
-		for res := range ch {
-			if res.Error.ValueString() == "" {
-				state.Up = append(state.Up, EndpointModel{
-					Name: res.Name,
-					Address: res.Address,
-					Port: res.Port,
-				})
-			} else {
-				state.Down = append(state.Down, res)
-			}
-		}
-	}()
-
-	for _, endpoint := range state.Endpoints {
-		if endpoint.IsInMaintenace(state.Maintenance) {
-			continue
-		}
-
-		go func(reqUrl url.URL, endpoint EndpointModel) {
-			wg.Add(1)
-			defer wg.Done()
-
-			address := endpoint.Address.ValueString()
-			port :=  endpoint.Port.ValueInt64()
-			reqUrl.Host = fmt.Sprintf("%s:%d", address, port)
-
-			idx := retries
-
-			for idx >= 0 {
-				client := http.Client{Timeout: dur}
-
-				if isTls {
-					client.Transport = &http.Transport{
-						TLSClientConfig: tlsConf,
-					}
-				}
-
-				req, reqErr := http.NewRequest(http.MethodGet, reqUrl.String(), http.NoBody)
-				if reqErr != nil {
-					ch <- EndpointDownModel{
-						Name: endpoint.Name,
-						Address: endpoint.Address,
-						Port: endpoint.Port,
-						Error: types.StringValue(reqErr.Error()),
-					}
-					return
-				}
-
-				if state.ClientAuth != nil && state.ClientAuth.PasswordAuth != nil && (!state.ClientAuth.PasswordAuth.Username.IsNull()) && (!state.ClientAuth.PasswordAuth.Password.IsNull()) {
-					req.SetBasicAuth(
-						state.ClientAuth.PasswordAuth.Username.ValueString(), 
-						state.ClientAuth.PasswordAuth.Password.ValueString(),
-					)
-				}
-
-				res, resErr := client.Do(req)
-				if resErr != nil {
-					if idx == 0 {
-						ch <- EndpointDownModel{
-							Name: endpoint.Name,
-							Address: endpoint.Address,
-							Port: endpoint.Port,
-							Error: types.StringValue(resErr.Error()),
-						}
-						return
-					}
-
-					idx = idx - 1
+			for _, endpoint := range state.Endpoints {
+				if endpoint.IsInMaintenace(state.Maintenance) {
 					continue
 				}
+		
+				wg.Add(1)
+				go func(endpoint EndpointModel) {
+					defer wg.Done()
 
-				code := int64(res.StatusCode)
-				res.Body.Close()
+					address := endpoint.Address.ValueString()
+					port :=  endpoint.Port.ValueInt64()
 
-				for _, statusCode := range statusCodes {
-					if code == statusCode {
-						ch <- EndpointDownModel{
-							Name: endpoint.Name,
-							Address: endpoint.Address,
-							Port: endpoint.Port,
-							Error: types.StringValue(""),
+					tflog.Info(ctx, "Checking Endpoint", map[string]interface{}{
+						"address": address,
+						"port": port,
+					})
+
+					var reqUrl url.URL
+					reqUrl.Path = urlPath
+					reqUrl.Host = fmt.Sprintf("%s:%d", address, port)
+					if isTls {
+						reqUrl.Scheme = "https"
+					} else {
+						reqUrl.Scheme = "http"
+					}
+
+					idx := retries
+
+					for idx >= 0 {
+						client := http.Client{Timeout: dur}
+
+						if isTls {
+							client.Transport = &http.Transport{
+								TLSClientConfig: tlsConf,
+							}
 						}
 
-						return
-					}
-				}
+						req, reqErr := http.NewRequest(http.MethodGet, reqUrl.String(), http.NoBody)
+						if reqErr != nil {
+							ch <- EndpointDownModel{
+								Name: endpoint.Name,
+								Address: endpoint.Address,
+								Port: endpoint.Port,
+								Error: types.StringValue(reqErr.Error()),
+							}
+							return
+						}
+		
+						if state.ClientAuth != nil && state.ClientAuth.PasswordAuth != nil && (!state.ClientAuth.PasswordAuth.Username.IsNull()) && (!state.ClientAuth.PasswordAuth.Password.IsNull()) {
+							req.SetBasicAuth(
+								state.ClientAuth.PasswordAuth.Username.ValueString(), 
+								state.ClientAuth.PasswordAuth.Password.ValueString(),
+							)
+						}
 
-				if idx == 0 {
-					ch <- EndpointDownModel{
-						Name: endpoint.Name,
-						Address: endpoint.Address,
-						Port: endpoint.Port,
-						Error: types.StringValue(fmt.Sprintf("Status code %d did not match expected values", code)),
-					}
-					return
-				}
+						res, resErr := client.Do(req)
+						if resErr != nil {
+							if idx == 0 {
+								ch <- EndpointDownModel{
+									Name: endpoint.Name,
+									Address: endpoint.Address,
+									Port: endpoint.Port,
+									Error: types.StringValue(resErr.Error()),
+								}
+								return
+							}
+		
+							idx = idx - 1
+							continue
+						}
+		
+						code := int64(res.StatusCode)
+						res.Body.Close()
+		
+						for _, statusCode := range statusCodes {
+							if code == statusCode {
+								ch <- EndpointDownModel{
+									Name: endpoint.Name,
+									Address: endpoint.Address,
+									Port: endpoint.Port,
+									Error: types.StringValue(""),
+								}
+		
+								return
+							}
+						}
+		
+						if idx == 0 {
+							ch <- EndpointDownModel{
+								Name: endpoint.Name,
+								Address: endpoint.Address,
+								Port: endpoint.Port,
+								Error: types.StringValue(fmt.Sprintf("Status code %d did not match expected values", code)),
+							}
+							return
+						}
 
-				idx = idx - 1
+						idx = idx - 1
+					}
+				}(endpoint)
 			}
-		}(reqUrl, endpoint)
-	}
 
-	wg.Wait()
-	close(ch)
-	wg2.Wait()
-  
+			wg.Wait()
+			close(ch)
+		}()
+
+		return ch
+	}()
+
+	resCh := func(endptCh <-chan EndpointDownModel) <-chan ResultModel {
+		resCh := make(chan ResultModel)
+
+		go func() {
+			res := ResultModel{
+				Up: []EndpointModel{},
+				Down: []EndpointDownModel{},
+			}
+	
+			for endpt := range endptCh {
+				if endpt.Error.ValueString() == "" {
+					tflog.Debug(ctx, "Setting endpoint as up", map[string]interface{}{
+						"address": endpt.Address.ValueString(),
+						"port": endpt.Port.ValueInt64(),
+					})
+					res.Up = append(res.Up, EndpointModel{
+						Name: endpt.Name,
+						Address: endpt.Address,
+						Port: endpt.Port,
+					})
+				} else {
+					tflog.Debug(ctx, "Setting endpoint as down", map[string]interface{}{
+						"address": endpt.Address.ValueString(),
+						"port": endpt.Port.ValueInt64(),
+					})
+					res.Down = append(res.Down, endpt)
+				}
+			}
+	
+			resCh <- res
+		}()
+
+		return resCh
+	}(endptCh)
+
+	res := <-resCh
+	state.Up = res.Up
+	state.Down = res.Down
+
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
