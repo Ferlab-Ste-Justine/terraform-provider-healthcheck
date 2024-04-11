@@ -1,4 +1,4 @@
-module ferlab/terraform-provider-healthcheck
+module github.com/Ferlab-Ste-Justine/terraform-provider-healthcheck
 
 go 1.20
 

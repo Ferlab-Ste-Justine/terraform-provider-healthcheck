@@ -12,6 +12,7 @@ import (
     "github.com/hashicorp/terraform-plugin-framework/datasource"
     "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var (
@@ -163,20 +164,28 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		return
 	}
 
+	state.Up = []EndpointModel{}
+	state.Down = []EndpointDownModel{}
+
+	ctx = tflog.SetField(ctx, "type", "tcp")
+
 	timeout := "10s"
 	if !state.Timeout.IsNull() {
 		timeout = state.Timeout.ValueString()
 	}
+	ctx = tflog.SetField(ctx, "timeout", timeout)
 
 	isTls := true
 	if !state.Tls.IsNull() {
 		isTls = state.Tls.ValueBool()
 	}
+	ctx = tflog.SetField(ctx, "use_tls", isTls)
 
 	retries := int64(3)
 	if !state.Retries.IsNull() {
 		retries = state.Retries.ValueInt64()
 	}
+	ctx = tflog.SetField(ctx, "max_retries", retries)
 
 	dur, err := time.ParseDuration(timeout)
 	if err != nil {
@@ -206,6 +215,7 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 
 	if state.ServerAuth != nil && (!state.ServerAuth.OverrideServerName.IsNull()) {
 		tlsConf.ServerName = state.ServerAuth.OverrideServerName.ValueString()
+		ctx = tflog.SetField(ctx, "healthcheck_server_name_overwrite", tlsConf.ServerName)
 	}
 
 	if state.ClientAuth != nil && (!state.ClientAuth.CertAuth.Cert.IsNull()) && (!state.ClientAuth.CertAuth.Key.IsNull()) {
@@ -220,101 +230,157 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		tlsConf.Certificates = []tls.Certificate{certData}
 	}
 
-	var wg sync.WaitGroup
-	var wg2 sync.WaitGroup
-	ch := make(chan EndpointDownModel)
-
-	go func() {
-		wg2.Add(1)
-		defer wg2.Done()
-
-		for res := range ch {
-			if res.Error.ValueString() == "" {
-				state.Up = append(state.Up, EndpointModel{
-					Name: res.Name,
-					Address: res.Address,
-					Port: res.Port,
-				})
-			} else {
-				state.Down = append(state.Down, res)
-			}
-		}
-	}()
-
-	for _, endpoint := range state.Endpoints {
-		if endpoint.IsInMaintenace(state.Maintenance) {
-			continue
-		}
+	endptCh := func() <-chan EndpointDownModel {
+		ch := make(chan EndpointDownModel)
 
 		go func() {
-			wg.Add(1)
-			defer wg.Done()
+			var wg sync.WaitGroup
 
-			address := endpoint.Address.ValueString()
-			port :=  endpoint.Port.ValueInt64()
-
-			if !isTls {
-				idx := retries
-
-				for idx >= 0 {
-					conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", address, port), dur)
-					if err == nil {
-						ch <- EndpointDownModel{
-							Name: endpoint.Name,
-							Address: endpoint.Address,
-							Port: endpoint.Port,
-							Error: types.StringValue(""),
-						}
-						conn.Close()
-						return
-					} else if idx == 0 {
-						ch <- EndpointDownModel{
-							Name: endpoint.Name,
-							Address: endpoint.Address,
-							Port: endpoint.Port,
-							Error: types.StringValue(err.Error()),
-						}
-						return
-					}
-					idx = idx - 1
+			for _, endpoint := range state.Endpoints {
+				if endpoint.IsInMaintenace(state.Maintenance) {
+					continue
 				}
-
-				return
-			}
 		
-			idx := retries
+				wg.Add(1)
+				go func(endpoint EndpointModel) {
+					defer wg.Done()
+		
+					address := endpoint.Address.ValueString()
+					port :=  endpoint.Port.ValueInt64()
+		
+					tflog.Info(ctx, "Checking Endpoint", map[string]interface{}{
+						"address": address,
+						"port": port,
+					})
 
-			for idx >= 0 {
-				dialer := &net.Dialer{
-					Timeout: dur,
-				}
-				conn, err := tls.DialWithDialer(dialer, "tcp", fmt.Sprintf("%s:%d", address, port), tlsConf)
-				if err == nil {
-					ch <- EndpointDownModel{
-						Name: endpoint.Name,
-						Address: endpoint.Address,
-						Port: endpoint.Port,
-						Error: types.StringValue(""),
+					if !isTls {
+						idx := retries
+		
+						for idx >= 0 {
+							conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", address, port), dur)
+							if err == nil {
+								tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
+									"address": address,
+									"port": port,
+									"success": true,
+								})
+								ch <- EndpointDownModel{
+									Name: endpoint.Name,
+									Address: endpoint.Address,
+									Port: endpoint.Port,
+									Error: types.StringValue(""),
+								}
+								conn.Close()
+								return
+							} else {
+								tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
+									"address": address,
+									"port": port,
+									"success": false,
+								})
+								if idx == 0 {
+									ch <- EndpointDownModel{
+										Name: endpoint.Name,
+										Address: endpoint.Address,
+										Port: endpoint.Port,
+										Error: types.StringValue(err.Error()),
+									}
+									return
+								}
+							}
+							idx = idx - 1
+						}
+		
+						return
 					}
-					conn.Close()
-					return
-				} else if idx == 0 {
-					ch <- EndpointDownModel{
-						Name: endpoint.Name,
-						Address: endpoint.Address,
-						Port: endpoint.Port,
-						Error: types.StringValue(err.Error()),
+				
+					idx := retries
+
+					for idx >= 0 {
+						dialer := &net.Dialer{
+							Timeout: dur,
+						}
+						conn, err := tls.DialWithDialer(dialer, "tcp", fmt.Sprintf("%s:%d", address, port), tlsConf)
+						if err == nil {
+							tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
+								"address": address,
+								"port": port,
+								"success": true,
+							})
+							ch <- EndpointDownModel{
+								Name: endpoint.Name,
+								Address: endpoint.Address,
+								Port: endpoint.Port,
+								Error: types.StringValue(""),
+							}
+							conn.Close()
+							return
+						} else {
+							tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
+								"address": address,
+								"port": port,
+								"success": false,
+							})
+							if idx == 0 {
+								ch <- EndpointDownModel{
+									Name: endpoint.Name,
+									Address: endpoint.Address,
+									Port: endpoint.Port,
+									Error: types.StringValue(err.Error()),
+								}
+								return
+							}
+						}
+						idx = idx - 1
 					}
-					return
-				}
-				idx = idx - 1
+				}(endpoint)
 			}
-		}()
-	}
 
-	wg.Wait()
-	close(ch)
-	wg2.Wait()
+			wg.Wait()
+			close(ch)
+		}()
+
+		return ch
+	}()
+
+	resCh := func(endptCh <-chan EndpointDownModel) <-chan ResultModel {
+		resCh := make(chan ResultModel)
+
+		go func() {
+			res := ResultModel{
+				Up: []EndpointModel{},
+				Down: []EndpointDownModel{},
+			}
+	
+			for endpt := range endptCh {
+				if endpt.Error.ValueString() == "" {
+					tflog.Debug(ctx, "Setting endpoint as up", map[string]interface{}{
+						"address": endpt.Address.ValueString(),
+						"port": endpt.Port.ValueInt64(),
+					})
+					res.Up = append(res.Up, EndpointModel{
+						Name: endpt.Name,
+						Address: endpt.Address,
+						Port: endpt.Port,
+					})
+				} else {
+					tflog.Debug(ctx, "Setting endpoint as down", map[string]interface{}{
+						"address": endpt.Address.ValueString(),
+						"port": endpt.Port.ValueInt64(),
+					})
+					res.Down = append(res.Down, endpt)
+				}
+			}
+	
+			resCh <- res
+		}()
+
+		return resCh
+	}(endptCh)
+
+	res := <-resCh
+	state.Up = res.Up
+	state.Down = res.Down
   
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)

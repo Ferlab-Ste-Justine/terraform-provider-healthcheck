@@ -7,7 +7,7 @@ import (
 
     "github.com/hashicorp/terraform-plugin-framework/providerserver"
 
-    "ferlab/terraform-provider-healthcheck/provider"
+    "github.com/Ferlab-Ste-Justine/terraform-provider-healthcheck/provider"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
     flag.Parse()
 
     opts := providerserver.ServeOpts{
-		Address: "github.com/Ferlab-Ste-Justine/terraform-provider-healthcheck",
+		Address: "registry.terraform.io/Ferlab-Ste-Justine/healthcheck",
         Debug:   debug,
     }
 

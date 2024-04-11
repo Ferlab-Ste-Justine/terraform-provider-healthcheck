@@ -31,6 +31,11 @@ type EndpointDownModel struct {
 	Error   types.String `tfsdk:"error"`
 }
 
+type ResultModel struct {
+	Up []EndpointModel
+	Down []EndpointDownModel
+}
+
 type ServerAuthModel struct {
 	CaCert           types.String `tfsdk:"ca_cert"`
 	OverrideServerName types.String `tfsdk:"override_server_name"`

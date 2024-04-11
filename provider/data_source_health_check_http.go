@@ -288,7 +288,7 @@ func (d *HttpDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 			continue
 		}
 
-		go func(reqUrl url.URL) {
+		go func(reqUrl url.URL, endpoint EndpointModel) {
 			wg.Add(1)
 			defer wg.Done()
 
@@ -369,7 +369,7 @@ func (d *HttpDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 
 				idx = idx - 1
 			}
-		}(reqUrl)
+		}(reqUrl, endpoint)
 	}
 
 	wg.Wait()
