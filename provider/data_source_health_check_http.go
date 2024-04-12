@@ -54,9 +54,7 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 		Attributes: map[string]schema.Attribute{
 			"status_codes": schema.ListAttribute{
 				Required: true,
-                ElementType: types.ListType{
-                    ElemType: types.Int64Type,
-                },
+                ElementType: types.Int64Type,
 			},
 			"endpoints": schema.ListNestedAttribute{
 				Required: true,
@@ -102,7 +100,7 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 					"ca_cert": schema.StringAttribute{
 						Required: true,
 					},
-					"override_hostname": schema.StringAttribute{
+					"override_server_name": schema.StringAttribute{
 						Optional: true,
 					},
 				},
