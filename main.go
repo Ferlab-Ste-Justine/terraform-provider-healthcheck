@@ -1,29 +1,29 @@
 package main
 
 import (
-    "context"
-    "flag"
-    "log"
+	"context"
+	"flag"
+	"log"
 
-    "github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 
-    "github.com/Ferlab-Ste-Justine/terraform-provider-healthcheck/provider"
+	"github.com/Ferlab-Ste-Justine/terraform-provider-healthcheck/provider"
 )
 
 func main() {
-    var debug bool
+	var debug bool
 
-    flag.BoolVar(&debug, "debug", false, "set to true to run the provider with support for debuggers like delve")
-    flag.Parse()
+	flag.BoolVar(&debug, "debug", false, "set to true to run the provider with support for debuggers like delve")
+	flag.Parse()
 
-    opts := providerserver.ServeOpts{
+	opts := providerserver.ServeOpts{
 		Address: "registry.terraform.io/Ferlab-Ste-Justine/healthcheck",
-        Debug:   debug,
-    }
+		Debug:   debug,
+	}
 
-    err := providerserver.Serve(context.Background(), provider.New(), opts)
+	err := providerserver.Serve(context.Background(), provider.New(), opts)
 
-    if err != nil {
-        log.Fatal(err.Error())
-    }
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }
