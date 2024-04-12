@@ -415,6 +415,8 @@ func (d *HttpDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	}(endptCh)
 
 	res := <-resCh
+	SortEndpoints[EndpointModel](res.Up)
+	SortEndpoints[EndpointDownModel](res.Down)
 	state.Up = res.Up
 	state.Down = res.Down
 

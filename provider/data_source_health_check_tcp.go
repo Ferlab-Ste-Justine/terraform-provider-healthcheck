@@ -379,6 +379,8 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	}(endptCh)
 
 	res := <-resCh
+	SortEndpoints[EndpointModel](res.Up)
+	SortEndpoints[EndpointDownModel](res.Down)
 	state.Up = res.Up
 	state.Down = res.Down
   
