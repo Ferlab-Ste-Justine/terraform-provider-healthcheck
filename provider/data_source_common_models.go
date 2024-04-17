@@ -25,7 +25,7 @@ func CmpEndpoints(endpt1 EndpointInt, endpt2 EndpointInt) bool {
 }
 
 func SortEndpoints[V EndpointInt](endpoints []V) {
-	sort.SliceStable(endpoints, func(i, j int) bool { return CmpEndpoints(endpoints[i], endpoints[j])})
+	sort.SliceStable(endpoints, func(i, j int) bool { return CmpEndpoints(endpoints[i], endpoints[j]) })
 }
 
 type EndpointModel struct {
@@ -80,12 +80,12 @@ func (endpoint EndpointDownModel) GetPort() int64 {
 }
 
 type ResultModel struct {
-	Up []EndpointModel
+	Up   []EndpointModel
 	Down []EndpointDownModel
 }
 
 type ServerAuthModel struct {
-	CaCert           types.String `tfsdk:"ca_cert"`
+	CaCert             types.String `tfsdk:"ca_cert"`
 	OverrideServerName types.String `tfsdk:"override_server_name"`
 }
 

@@ -3,8 +3,8 @@ package provider
 import (
 	"context"
 
-    "github.com/hashicorp/terraform-plugin-framework/datasource"
-    "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -15,11 +15,11 @@ var (
 type FilterDataSource struct{}
 
 func NewFilterDataSource() datasource.DataSource {
-    return &FilterDataSource{}
+	return &FilterDataSource{}
 }
 
 func (d *FilterDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-    resp.TypeName = req.ProviderTypeName + "_filter"
+	resp.TypeName = req.ProviderTypeName + "_filter"
 }
 
 type FilterDataSourceModel struct {
@@ -30,7 +30,7 @@ type FilterDataSourceModel struct {
 }
 
 func (d *FilterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-    resp.Schema = schema.Schema{
+	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"endpoints": schema.ListNestedAttribute{
 				Computed: true,
@@ -107,16 +107,16 @@ func (d *FilterDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	if notEmpty && len(state.Up) == 0 {
 		for _, down := range state.Down {
 			state.Endpoints = append(state.Endpoints, EndpointModel{
-				Name: down.Name,
+				Name:    down.Name,
 				Address: down.Address,
-				Port: down.Port,
+				Port:    down.Port,
 			})
 		}
 	}
-  
+
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-	  return
+		return
 	}
 }

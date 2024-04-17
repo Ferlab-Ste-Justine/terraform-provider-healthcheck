@@ -1,7 +1,7 @@
 package provider
 
 import (
-    "context"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-    "github.com/hashicorp/terraform-plugin-framework/datasource"
-    "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -22,23 +22,23 @@ var (
 type TcpDataSource struct{}
 
 func NewTcpDataSource() datasource.DataSource {
-    return &TcpDataSource{}
+	return &TcpDataSource{}
 }
 
 func (d *TcpDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
-    resp.TypeName = req.ProviderTypeName + "_tcp"
+	resp.TypeName = req.ProviderTypeName + "_tcp"
 }
 
 type ClientTcpAuthModel struct {
-	CertAuth     ClientCertAuthModel     `tfsdk:"cert_auth"`
+	CertAuth ClientCertAuthModel `tfsdk:"cert_auth"`
 }
 
 type TcpDataSourceModel struct {
 	Endpoints   []EndpointModel     `tfsdk:"endpoints"`
 	Maintenance []EndpointModel     `tfsdk:"maintenance"`
 	Tls         types.Bool          `tfsdk:"tls"`
-	ServerAuth  *ServerAuthModel     `tfsdk:"server_auth"`
-	ClientAuth  *ClientTcpAuthModel  `tfsdk:"client_auth"`
+	ServerAuth  *ServerAuthModel    `tfsdk:"server_auth"`
+	ClientAuth  *ClientTcpAuthModel `tfsdk:"client_auth"`
 	Timeout     types.String        `tfsdk:"timeout"`
 	Retries     types.Int64         `tfsdk:"retries"`
 	Up          []EndpointModel     `tfsdk:"up"`
@@ -46,7 +46,7 @@ type TcpDataSourceModel struct {
 }
 
 func (d *TcpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-    resp.Schema = schema.Schema{
+	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"endpoints": schema.ListNestedAttribute{
 				Required: true,
@@ -104,7 +104,7 @@ func (d *TcpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 								Required: true,
 							},
 							"key": schema.StringAttribute{
-								Required: true,
+								Required:  true,
 								Sensitive: true,
 							},
 						},
@@ -191,7 +191,7 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Parsing Timeout Argument",
-			"Could not parse timeout, unexpected error: " + err.Error(),
+			"Could not parse timeout, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -223,7 +223,7 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 		if err != nil {
 			resp.Diagnostics.AddError(
 				"Error Parsing Client Tls Credentials",
-				"Could not parse client cert or private key, unexpected error: " + err.Error(),
+				"Could not parse client cert or private key, unexpected error: "+err.Error(),
 			)
 			return
 		}
@@ -240,60 +240,60 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 				if endpoint.IsInMaintenace(state.Maintenance) {
 					continue
 				}
-		
+
 				wg.Add(1)
 				go func(endpoint EndpointModel) {
 					defer wg.Done()
-		
+
 					address := endpoint.Address.ValueString()
-					port :=  endpoint.Port.ValueInt64()
-		
+					port := endpoint.Port.ValueInt64()
+
 					tflog.Info(ctx, "Checking Endpoint", map[string]interface{}{
 						"address": address,
-						"port": port,
+						"port":    port,
 					})
 
 					if !isTls {
 						idx := retries
-		
+
 						for idx >= 0 {
 							conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", address, port), dur)
 							if err == nil {
 								tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
 									"address": address,
-									"port": port,
+									"port":    port,
 									"success": true,
 								})
 								ch <- EndpointDownModel{
-									Name: endpoint.Name,
+									Name:    endpoint.Name,
 									Address: endpoint.Address,
-									Port: endpoint.Port,
-									Error: types.StringValue(""),
+									Port:    endpoint.Port,
+									Error:   types.StringValue(""),
 								}
 								conn.Close()
 								return
 							} else {
 								tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
 									"address": address,
-									"port": port,
+									"port":    port,
 									"success": false,
 								})
 								if idx == 0 {
 									ch <- EndpointDownModel{
-										Name: endpoint.Name,
+										Name:    endpoint.Name,
 										Address: endpoint.Address,
-										Port: endpoint.Port,
-										Error: types.StringValue(err.Error()),
+										Port:    endpoint.Port,
+										Error:   types.StringValue(err.Error()),
 									}
 									return
 								}
 							}
 							idx = idx - 1
 						}
-		
+
 						return
 					}
-				
+
 					idx := retries
 
 					for idx >= 0 {
@@ -304,29 +304,29 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 						if err == nil {
 							tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
 								"address": address,
-								"port": port,
+								"port":    port,
 								"success": true,
 							})
 							ch <- EndpointDownModel{
-								Name: endpoint.Name,
+								Name:    endpoint.Name,
 								Address: endpoint.Address,
-								Port: endpoint.Port,
-								Error: types.StringValue(""),
+								Port:    endpoint.Port,
+								Error:   types.StringValue(""),
 							}
 							conn.Close()
 							return
 						} else {
 							tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
 								"address": address,
-								"port": port,
+								"port":    port,
 								"success": false,
 							})
 							if idx == 0 {
 								ch <- EndpointDownModel{
-									Name: endpoint.Name,
+									Name:    endpoint.Name,
 									Address: endpoint.Address,
-									Port: endpoint.Port,
-									Error: types.StringValue(err.Error()),
+									Port:    endpoint.Port,
+									Error:   types.StringValue(err.Error()),
 								}
 								return
 							}
@@ -348,30 +348,30 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 
 		go func() {
 			res := ResultModel{
-				Up: []EndpointModel{},
+				Up:   []EndpointModel{},
 				Down: []EndpointDownModel{},
 			}
-	
+
 			for endpt := range endptCh {
 				if endpt.Error.ValueString() == "" {
 					tflog.Debug(ctx, "Setting endpoint as up", map[string]interface{}{
 						"address": endpt.Address.ValueString(),
-						"port": endpt.Port.ValueInt64(),
+						"port":    endpt.Port.ValueInt64(),
 					})
 					res.Up = append(res.Up, EndpointModel{
-						Name: endpt.Name,
+						Name:    endpt.Name,
 						Address: endpt.Address,
-						Port: endpt.Port,
+						Port:    endpt.Port,
 					})
 				} else {
 					tflog.Debug(ctx, "Setting endpoint as down", map[string]interface{}{
 						"address": endpt.Address.ValueString(),
-						"port": endpt.Port.ValueInt64(),
+						"port":    endpt.Port.ValueInt64(),
 					})
 					res.Down = append(res.Down, endpt)
 				}
 			}
-	
+
 			resCh <- res
 		}()
 
@@ -383,10 +383,10 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 	SortEndpoints[EndpointDownModel](res.Down)
 	state.Up = res.Up
 	state.Down = res.Down
-  
+
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-	  return
+		return
 	}
 }

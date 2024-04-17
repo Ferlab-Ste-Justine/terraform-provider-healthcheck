@@ -1,38 +1,37 @@
 package provider
 
 import (
-    "context"
+	"context"
 
-    "github.com/hashicorp/terraform-plugin-framework/datasource"
-    "github.com/hashicorp/terraform-plugin-framework/provider"
-    "github.com/hashicorp/terraform-plugin-framework/provider/schema"
-    "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 )
 
 var _ provider.Provider = &HealthCheckProvider{}
 
-type HealthCheckProvider struct {}
-
+type HealthCheckProvider struct{}
 
 func New() func() provider.Provider {
-    return func() provider.Provider {
-        return &HealthCheckProvider{}
-    }
+	return func() provider.Provider {
+		return &HealthCheckProvider{}
+	}
 }
 
 func (p *HealthCheckProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 }
 
 func (p *HealthCheckProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-    resp.TypeName = "healthcheck"
+	resp.TypeName = "healthcheck"
 }
 
 func (p *HealthCheckProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-    return []func() datasource.DataSource {
-        NewTcpDataSource,
+	return []func() datasource.DataSource{
+		NewTcpDataSource,
 		NewHttpDataSource,
 		NewFilterDataSource,
-    }
+	}
 }
 
 func (p *HealthCheckProvider) Resources(ctx context.Context) []func() resource.Resource {
@@ -40,5 +39,5 @@ func (p *HealthCheckProvider) Resources(ctx context.Context) []func() resource.R
 }
 
 func (p *HealthCheckProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
-    resp.Schema = schema.Schema{}
+	resp.Schema = schema.Schema{}
 }
