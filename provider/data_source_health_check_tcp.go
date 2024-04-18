@@ -302,19 +302,39 @@ func (d *TcpDataSource) Read(ctx context.Context, req datasource.ReadRequest, re
 						}
 						conn, err := tls.DialWithDialer(dialer, "tcp", fmt.Sprintf("%s:%d", address, port), tlsConf)
 						if err == nil {
-							tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
-								"address": address,
-								"port":    port,
-								"success": true,
-							})
-							ch <- EndpointDownModel{
-								Name:    endpoint.Name,
-								Address: endpoint.Address,
-								Port:    endpoint.Port,
-								Error:   types.StringValue(""),
+							err = conn.Handshake()
+							if err == nil {
+								tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
+									"address": address,
+									"port":    port,
+									"success": true,
+								})
+								ch <- EndpointDownModel{
+									Name:    endpoint.Name,
+									Address: endpoint.Address,
+									Port:    endpoint.Port,
+									Error:   types.StringValue(""),
+								}
+								conn.Close()
+								return
+							} else {
+								tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
+									"address": address,
+									"port":    port,
+									"success": false,
+								})
+								if idx == 0 {
+									ch <- EndpointDownModel{
+										Name:    endpoint.Name,
+										Address: endpoint.Address,
+										Port:    endpoint.Port,
+										Error:   types.StringValue(err.Error()),
+									}
+									conn.Close()
+									return
+								}
+								conn.Close()
 							}
-							conn.Close()
-							return
 						} else {
 							tflog.Info(ctx, "Called Endpoint", map[string]interface{}{
 								"address": address,
