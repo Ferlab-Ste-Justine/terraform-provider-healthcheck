@@ -1,5 +1,4 @@
 terraform-provider-healthcheck
-docs
 troubleshoot_env/*/.terraform*
 troubleshoot_env/*/terraform.tfstate*
 troubleshoot_env/*/output
