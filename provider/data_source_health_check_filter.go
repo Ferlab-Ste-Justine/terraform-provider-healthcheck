@@ -35,7 +35,7 @@ func (d *FilterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 		Attributes: map[string]schema.Attribute{
 			"endpoints": schema.ListNestedAttribute{
 				Description: "List of effective endpoints computed after processing",
-				Computed: true,
+				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
@@ -52,11 +52,11 @@ func (d *FilterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			"not_empty": schema.BoolAttribute{
 				Description: "If set to true and the list of 'up' endpoints is empty, 'down' endpoints will be returned as the effective endpoints instead. It is used to provide continued availability in the event the terraform node has some kind of network partition",
-				Optional: true,
+				Optional:    true,
 			},
 			"up": schema.ListNestedAttribute{
 				Description: "List of endpoints that will be returned as the effective endpoints by default. Should receive the 'up' output of a tcp or http check.",
-				Required: true,
+				Required:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
@@ -73,7 +73,7 @@ func (d *FilterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 			},
 			"down": schema.ListNestedAttribute{
 				Description: "List of endpoints that will not be returned in the list of effective endpoints by default. Should receive the 'down' output of a tcp or http check.",
-				Required: true,
+				Required:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
