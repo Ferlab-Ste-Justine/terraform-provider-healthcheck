@@ -39,5 +39,7 @@ func (p *HealthCheckProvider) Resources(ctx context.Context) []func() resource.R
 }
 
 func (p *HealthCheckProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
-	resp.Schema = schema.Schema{}
+	resp.Schema = schema.Schema{
+		Description: "Perform health checks on tcp and http endpoints and return the results.",
+	}
 }

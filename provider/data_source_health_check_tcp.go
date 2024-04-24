@@ -47,49 +47,61 @@ type TcpDataSourceModel struct {
 
 func (d *TcpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Returns result for connection checks performed on a set on related tpc endpoints",
 		Attributes: map[string]schema.Attribute{
 			"endpoints": schema.ListNestedAttribute{
+				Description: "List of endpoints to perform connection check on",
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
+							Description: "Optional name to provide for the endpoint",
 							Optional: true,
 						},
 						"address": schema.StringAttribute{
+							Description: "Address the endpoint is listening on",
 							Required: true,
 						},
 						"port": schema.Int64Attribute{
+							Description: "Port the endpoint is listening on",
 							Required: true,
 						},
 					},
 				},
 			},
 			"maintenance": schema.ListNestedAttribute{
+				Description: "Optional list of endpoints that are under maintenance. Those endpoints will not be polled or included in the results",
 				Optional: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
+							Description: "If provided, endpoint to exclude will be matched by name. In such cases, the 'address' and 'port' fields should not be provided",
 							Optional: true,
 						},
 						"address": schema.StringAttribute{
+							Description: "If provided, endpoint to exclude will be matched by the provided address (in addition to the 'port' field). In such cases, the 'name' field should not be provided",
 							Optional: true,
 						},
 						"port": schema.Int64Attribute{
+							Description: "If provided, endpoint to exclude will be matched by the provided port (in addition to the 'address' field). In such cases, the 'name' field should not be provided",
 							Optional: true,
 						},
 					},
 				},
 			},
 			"tls": schema.BoolAttribute{
+				Description: "Whether a tls connection should be attempted",
 				Optional: true,
 			},
 			"server_auth": schema.SingleNestedAttribute{
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"ca_cert": schema.StringAttribute{
+						Description: "In the case of a tls connection, a CA certificate to check the validity of the server endpoints",
 						Required: true,
 					},
 					"override_server_name": schema.StringAttribute{
+						Description: "An alternate name to use instead of the passed endpoints address when validating the endpoints' server certificate",
 						Optional: true,
 					},
 				},
@@ -98,12 +110,15 @@ func (d *TcpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"cert_auth": schema.SingleNestedAttribute{
+						Description: "Parameters to perform client certificate authentication during the connection",
 						Required: true,
 						Attributes: map[string]schema.Attribute{
 							"cert": schema.StringAttribute{
+								Description: "Public certificate to use to authentify the client",
 								Required: true,
 							},
 							"key": schema.StringAttribute{
+								Description: "Private key to use to authentify the client",
 								Required:  true,
 								Sensitive: true,
 							},
@@ -112,41 +127,52 @@ func (d *TcpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, re
 				},
 			},
 			"timeout": schema.StringAttribute{
+				Description: "Timeout after which a connection attempt on an endpoint will be aborted",
 				Optional: true,
 			},
 			"retries": schema.Int64Attribute{
+				Description: "Number of retries to perform on a particular endpoint with a failing connection before determining that it is down",
 				Optional: true,
 			},
 			"up": schema.ListNestedAttribute{
+				Description: "List of endpoints that were successfully connected to",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
+							Description: "Name of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 						"address": schema.StringAttribute{
+							Description: "Address of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 						"port": schema.Int64Attribute{
+							Description: "Port of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 					},
 				},
 			},
 			"down": schema.ListNestedAttribute{
+				Description: "List of endpoints that could not be connected to",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
+							Description: "Name of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 						"address": schema.StringAttribute{
+							Description: "Address of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 						"port": schema.Int64Attribute{
+							Description: "Port of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 						"error": schema.StringAttribute{
+							Description: "Error message that was returned during the last attempt to connect",
 							Computed: true,
 						},
 					},

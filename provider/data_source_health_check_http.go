@@ -51,56 +51,70 @@ type HttpDataSourceModel struct {
 
 func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Returns result for requests performed on a set on related http endpoints",
 		Attributes: map[string]schema.Attribute{
 			"status_codes": schema.ListAttribute{
+				Description: "List of accepted status code that mark a successful request",
 				Required:    true,
 				ElementType: types.Int64Type,
 			},
 			"endpoints": schema.ListNestedAttribute{
+				Description: "List of endpoints to perform request check on",
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
+							Description: "Optional name to provide for the endpoint",
 							Optional: true,
 						},
 						"address": schema.StringAttribute{
+							Description: "Address the endpoint is listening on",
 							Required: true,
 						},
 						"port": schema.Int64Attribute{
+							Description: "Port the endpoint is listening on",
 							Required: true,
 						},
 					},
 				},
 			},
 			"maintenance": schema.ListNestedAttribute{
+				Description: "Optional list of endpoints that are under maintenance. Those endpoints will not be polled or included in the results",
 				Optional: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
+							Description: "If provided, endpoint to exclude will be matched by name. In such cases, the 'address' and 'port' fields should not be provided",
 							Optional: true,
 						},
 						"address": schema.StringAttribute{
+							Description: "If provided, endpoint to exclude will be matched by the provided address (in addition to the 'port' field). In such cases, the 'name' field should not be provided",
 							Optional: true,
 						},
 						"port": schema.Int64Attribute{
+							Description: "If provided, endpoint to exclude will be matched by the provided port (in addition to the 'address' field). In such cases, the 'name' field should not be provided",
 							Optional: true,
 						},
 					},
 				},
 			},
 			"path": schema.StringAttribute{
+				Description: "Http path to use in the request url for all endpoints",
 				Required: true,
 			},
 			"tls": schema.BoolAttribute{
+				Description: "Whether a tls connection should be attempted",
 				Optional: true,
 			},
 			"server_auth": schema.SingleNestedAttribute{
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"ca_cert": schema.StringAttribute{
+						Description: "In the case of a tls connection, a CA certificate to check the validity of the server endpoints",
 						Required: true,
 					},
 					"override_server_name": schema.StringAttribute{
+						Description: "An alternate name to use instead of the passed endpoints address when validating the endpoints' server certificate",
 						Optional: true,
 					},
 				},
@@ -109,24 +123,30 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
 					"cert_auth": schema.SingleNestedAttribute{
+						Description: "Parameters to perform client certificate authentication during the connection",
 						Optional: true,
 						Attributes: map[string]schema.Attribute{
 							"cert": schema.StringAttribute{
+								Description: "Public certificate to use to authentify the client",
 								Required: true,
 							},
 							"key": schema.StringAttribute{
+								Description: "Private key to use to authentify the client",
 								Required:  true,
 								Sensitive: true,
 							},
 						},
 					},
 					"password_auth": schema.SingleNestedAttribute{
+						Description: "Parameters to perform http basic auth authentication during the request",
 						Optional: true,
 						Attributes: map[string]schema.Attribute{
 							"username": schema.StringAttribute{
+								Description: "Username to provide to the server",
 								Required: true,
 							},
 							"password": schema.StringAttribute{
+								Description: "Password to provide to the server",
 								Required:  true,
 								Sensitive: true,
 							},
@@ -135,41 +155,52 @@ func (d *HttpDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, r
 				},
 			},
 			"timeout": schema.StringAttribute{
+				Description: "Timeout after which a request attempt on an endpoint will be aborted",
 				Optional: true,
 			},
 			"retries": schema.Int64Attribute{
+				Description: "Number of retries to perform on a particular endpoint with a failing request before determining that it is unavailable",
 				Optional: true,
 			},
 			"up": schema.ListNestedAttribute{
+				Description: "List of endpoints on which a successful request was performed",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
+							Description: "Name of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 						"address": schema.StringAttribute{
+							Description: "Address of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 						"port": schema.Int64Attribute{
+							Description: "Port of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 					},
 				},
 			},
 			"down": schema.ListNestedAttribute{
+				Description: "List of endpoints that couldn't be successfully requested to",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"name": schema.StringAttribute{
+							Description: "Name of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 						"address": schema.StringAttribute{
+							Description: "Address of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 						"port": schema.Int64Attribute{
+							Description: "Port of the endpoint, corresponding to the entry passed to the 'endpoints' argument",
 							Computed: true,
 						},
 						"error": schema.StringAttribute{
+							Description: "Error message that was returned during the last request attempt",
 							Computed: true,
 						},
 					},

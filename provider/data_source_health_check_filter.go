@@ -31,8 +31,10 @@ type FilterDataSourceModel struct {
 
 func (d *FilterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Filter to perform further processing on the result of a tcp or http health checks. Currently only supports the 'not empty' clause.",
 		Attributes: map[string]schema.Attribute{
 			"endpoints": schema.ListNestedAttribute{
+				Description: "List of effective endpoints computed after processing",
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -49,9 +51,11 @@ func (d *FilterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				},
 			},
 			"not_empty": schema.BoolAttribute{
+				Description: "If set to true and the list of 'up' endpoints is empty, 'down' endpoints will be returned as the effective endpoints instead. It is used to provide continued availability in the event the terraform node has some kind of network partition",
 				Optional: true,
 			},
 			"up": schema.ListNestedAttribute{
+				Description: "List of endpoints that will be returned as the effective endpoints by default. Should receive the 'up' output of a tcp or http check.",
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
@@ -68,6 +72,7 @@ func (d *FilterDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 				},
 			},
 			"down": schema.ListNestedAttribute{
+				Description: "List of endpoints that will not be returned in the list of effective endpoints by default. Should receive the 'down' output of a tcp or http check.",
 				Required: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
